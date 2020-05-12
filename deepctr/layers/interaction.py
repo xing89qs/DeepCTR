@@ -407,7 +407,8 @@ class FM(Layer):
         - [Factorization Machines](https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf)
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, out_shape=1, **kwargs):
+        self.out_shape = out_shape
 
         super(FM, self).__init__(**kwargs)
 
@@ -426,7 +427,6 @@ class FM(Layer):
                 % (K.ndim(inputs)))
 
         concated_embeds_value = inputs
-
         square_of_sum = tf.square(reduce_sum(
             concated_embeds_value, axis=1, keep_dims=True))
         sum_of_square = reduce_sum(
@@ -437,7 +437,7 @@ class FM(Layer):
         return cross_term
 
     def compute_output_shape(self, input_shape):
-        return (None, 1)
+        return (None, self.out_shape)
 
 
 class InnerProductLayer(Layer):
@@ -1062,7 +1062,7 @@ class FieldWiseBiInteraction(Layer):
 
     """
 
-    def __init__(self,use_bias=True, seed=1024, **kwargs):
+    def __init__(self, use_bias=True, seed=1024, **kwargs):
         self.use_bias = use_bias
         self.seed = seed
 

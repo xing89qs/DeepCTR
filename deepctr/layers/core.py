@@ -223,10 +223,9 @@ class PredictionLayer(Layer):
         super(PredictionLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
-
         if self.use_bias:
             self.global_bias = self.add_weight(
-                shape=(1,), initializer=Zeros(), name="global_bias")
+                shape=(input_shape[-1],), initializer=Zeros(), name="global_bias")
 
         # Be sure to call this somewhere!
         super(PredictionLayer, self).build(input_shape)
@@ -235,15 +234,16 @@ class PredictionLayer(Layer):
         x = inputs
         if self.use_bias:
             x = tf.nn.bias_add(x, self.global_bias, data_format='NHWC')
-        if self.task == "binary":
+        if self.task == "multiclass":
+            x = tf.nn.softmax(x)
+        elif self.task == "binary":
             x = tf.sigmoid(x)
-
-        output = tf.reshape(x, (-1, 1))
-
-        return output
+        else:
+            x = tf.reshape(x, (-1, 1))
+        return x
 
     def compute_output_shape(self, input_shape):
-        return (None, 1)
+        return None, input_shape[-1]
 
     def get_config(self, ):
         config = {'task': self.task, 'use_bias': self.use_bias}
