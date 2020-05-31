@@ -7,7 +7,6 @@ Author:
 """
 import tensorflow as tf
 
-
 class NoMask(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super(NoMask, self).__init__(**kwargs)
@@ -65,9 +64,10 @@ class Hash(tf.keras.layers.Layer):
 
 class Linear(tf.keras.layers.Layer):
 
-    def __init__(self, l2_reg=0.0, mode=0, use_bias=False, out_shape=None, **kwargs):
+    def __init__(self, l1_reg=0.0, l2_reg=0.0, mode=0, use_bias=False, out_shape=None, **kwargs):
 
         self.l2_reg = l2_reg
+        self.l1_reg = l1_reg
         # self.l2_reg = tf.contrib.layers.l2_regularizer(float(l2_reg_linear))
         if mode not in [0, 1, 2]:
             raise ValueError("mode must be 0,1 or 2")
@@ -87,21 +87,21 @@ class Linear(tf.keras.layers.Layer):
                 'linear_kernel',
                 shape=[int(input_shape[-1]), self.out_shape],
                 initializer=tf.keras.initializers.glorot_normal(),
-                regularizer=tf.keras.regularizers.l2(self.l2_reg),
+                regularizer=tf.keras.regularizers.l1_l2(self.l1_reg, self.l2_reg),
                 trainable=True)
         if self.mode == 1:
             self.kernel = self.add_weight(
                 'linear_kernel',
                 shape=[int(input_shape[-1]), self.out_shape],
                 initializer=tf.keras.initializers.glorot_normal(),
-                regularizer=tf.keras.regularizers.l2(self.l2_reg),
+                regularizer=tf.keras.regularizers.l1_l2(self.l1_reg, self.l2_reg),
                 trainable=True)
         elif self.mode == 2:
             self.kernel = [self.add_weight(
                 'linear_kernel',
                 shape=[int(input_shape[i][-1]), self.out_shape],
                 initializer=tf.keras.initializers.glorot_normal(),
-                regularizer=tf.keras.regularizers.l2(self.l2_reg),
+                regularizer=tf.keras.regularizers.l1_l2(self.l1_reg, self.l2_reg),
                 trainable=True) for i in range(len(input_shape))]
 
         super(Linear, self).build(input_shape)  # Be sure to call this somewhere!
@@ -113,12 +113,12 @@ class Linear(tf.keras.layers.Layer):
             linear_logit = fc
         elif self.mode == 1:
             dense_input = inputs
-            fc = tf.tensordot(dense_input, self.kernel, axes=(-1, 0))
+            fc = tf.expand_dims(tf.matmul(dense_input, self.kernel), axis=1)
             linear_logit = fc
         else:
             sparse_input, dense_input = inputs
-            fc = tf.tensordot(dense_input, self.kernel[1], axes=(-1, 0))
-            linear_logit = tf.tensordot(dense_input, self.kernel[0], axes=(-1, 0)) + fc
+            fc = tf.tensordot(sparse_input, self.kernel[0], axes=(-1, 0))
+            linear_logit = tf.expand_dims(tf.matmul(dense_input, self.kernel[1]), axis=1) + fc
         if self.use_bias:
             linear_logit += self.bias
 

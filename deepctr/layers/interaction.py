@@ -230,12 +230,13 @@ class CIN(Layer):
         self.filters = []
         self.bias = []
         for i, size in enumerate(self.layer_size):
+            print(self.l2_reg)
 
             self.filters.append(self.add_weight(name='filter' + str(i),
                                                 shape=[1, self.field_nums[-1]
                                                        * self.field_nums[0], size],
-                                                dtype=tf.float32, initializer=glorot_uniform(
-                    seed=self.seed + i),
+                                                dtype=tf.float32,
+                                                initializer=tf.random_normal_initializer(mean=0, stddev=0.00000001),
                                                 regularizer=l2(self.l2_reg)))
 
             self.bias.append(self.add_weight(name='bias' + str(i), shape=[size], dtype=tf.float32,

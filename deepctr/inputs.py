@@ -211,7 +211,7 @@ def create_embedding_matrix(feature_columns, l2_reg, init_std, seed, prefix="", 
 
 
 def get_linear_logit(features, feature_columns, units=1, use_bias=False, init_std=0.0001, seed=1024, prefix='linear',
-                     l2_reg=0, out_shape=1):
+                     l1_reg=0, l2_reg=0, out_shape=1):
     linear_feature_columns = copy(feature_columns)
     for i in range(len(linear_feature_columns)):
         if isinstance(linear_feature_columns[i], SparseFeat):
@@ -225,6 +225,7 @@ def get_linear_logit(features, feature_columns, units=1, use_bias=False, init_st
     linear_emb_list = [input_from_feature_columns(features, linear_feature_columns, l2_reg, init_std, seed,
                                                   prefix=prefix + str(i), out_shape=out_shape)[0] for i in
                        range(units)]
+    print(linear_emb_list[0])
     _, dense_input_list = input_from_feature_columns(features, linear_feature_columns, l2_reg, init_std, seed,
                                                      prefix=prefix, out_shape=out_shape)
 
@@ -233,14 +234,14 @@ def get_linear_logit(features, feature_columns, units=1, use_bias=False, init_st
         if len(linear_emb_list[i]) > 0 and len(dense_input_list) > 0:
             sparse_input = concat_func(linear_emb_list[i])
             dense_input = concat_func(dense_input_list)
-            linear_logit = Linear(l2_reg, mode=2, use_bias=use_bias, out_shape=out_shape)(
+            linear_logit = Linear(l1_reg, l2_reg, mode=2, use_bias=use_bias, out_shape=out_shape)(
                 [sparse_input, dense_input])
         elif len(linear_emb_list[i]) > 0:
             sparse_input = concat_func(linear_emb_list[i])
-            linear_logit = Linear(l2_reg, mode=0, use_bias=use_bias, out_shape=out_shape)(sparse_input)
+            linear_logit = Linear(l1_reg, l2_reg, mode=0, use_bias=use_bias, out_shape=out_shape)(sparse_input)
         elif len(dense_input_list) > 0:
             dense_input = concat_func(dense_input_list)
-            linear_logit = Linear(l2_reg, mode=1, use_bias=use_bias, out_shape=out_shape)(dense_input)
+            linear_logit = Linear(l1_reg, l2_reg, mode=1, use_bias=use_bias, out_shape=out_shape)(dense_input)
         else:
             # raise NotImplementedError
             return add_func([])
@@ -333,7 +334,7 @@ def get_dense_input(features, feature_columns):
 
 
 def input_from_feature_columns(features, feature_columns, l2_reg, init_std, seed, prefix='', seq_mask_zero=True,
-                               support_dense=True, support_group=False, out_shape=1):
+                               support_dense=True, support_group=False, no_pooling=False, out_shape=1):
     sparse_feature_columns = list(
         filter(lambda x: isinstance(x, SparseFeat), feature_columns)) if feature_columns else []
     varlen_sparse_feature_columns = list(
@@ -349,6 +350,9 @@ def input_from_feature_columns(features, feature_columns, l2_reg, init_std, seed
         raise ValueError("DenseFeat is not supported in dnn_feature_columns")
 
     sequence_embed_dict = varlen_embedding_lookup(embedding_matrix_dict, features, varlen_sparse_feature_columns)
+    if no_pooling:
+        return sequence_embed_dict
+
     group_varlen_sparse_embedding_dict = get_varlen_pooling_list(sequence_embed_dict, features,
                                                                  varlen_sparse_feature_columns)
 
